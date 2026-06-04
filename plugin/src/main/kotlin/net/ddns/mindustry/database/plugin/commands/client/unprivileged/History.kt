@@ -3,8 +3,10 @@ package net.ddns.mindustry.database.plugin.commands.client.unprivileged
 import arc.util.CommandHandler
 import mindustry.Vars
 import mindustry.gen.Player
+import net.ddns.mindustry.database.plugin.PlayerSelect
 import net.ddns.mindustry.database.plugin.renderPlayerHistory
 import net.ddns.mindustry.database.plugin.renderTileHistory
+import net.ddns.mindustry.database.plugin.resolveTargetAccount
 
 /**
  * Lets any player inspect what changed and by whom.
@@ -22,7 +24,8 @@ class History(handler: CommandHandler) : UnprivilegedClientCommand(handler) {
             description = "Inspect who changed a tile or what a player did. " +
                     "[lightgray](in-memory, resets on map change)[]\n" +
                     "  [accent]/history[white] - toggle tap-to-inspect, then tap a tile\n" +
-                    "  [accent]/history <player>[white] - that player's recent actions\n" +
+                    "  [accent]/history <player>[white] - that player's recent actions (by account name)\n" +
+                    "  [accent]/history pick[white] - pick an online player from a menu\n" +
                     "  [accent]/history <x> <y>[white] - history of a single tile"
             parameters = "[player/x] [y]"
         }
@@ -31,9 +34,22 @@ class History(handler: CommandHandler) : UnprivilegedClientCommand(handler) {
     override fun runner(arguments: Array<String>, player: Player) {
         when (arguments.size) {
             0 -> toggleInspect(player)
-            1 -> player.sendMessage(renderPlayerHistory(arguments[0]))
+            1 -> {
+                if (arguments[0].equals("pick", ignoreCase = true)) {
+                    pickPlayer(player)
+                    return
+                }
+                val target = resolveTargetAccount(arguments[0], player) ?: return
+                player.sendMessage(renderPlayerHistory(target.username))
+            }
             2 -> showTile(arguments[0], arguments[1], player)
             else -> player.sendMessage("[scarlet]Usage: /history, /history <player>, or /history <x> <y>")
+        }
+    }
+
+    private fun pickPlayer(player: Player) {
+        PlayerSelect.open(player, title = "[gold]Player history", message = "Select a player.") { account ->
+            player.sendMessage(renderPlayerHistory(account.username))
         }
     }
 

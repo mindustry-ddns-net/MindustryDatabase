@@ -5,6 +5,9 @@ import arc.util.Log
 import mindustry.gen.Player
 import net.ddns.mindustry.database.client.PunishmentQueries.Issuer
 import net.ddns.mindustry.database.plugin.Main.Companion.database
+import net.ddns.mindustry.database.plugin.PlayerSelect
+import net.ddns.mindustry.database.plugin.resolveTargetAccount
+import net.ddns.mindustry.database.schema.tables.pojos.Account
 import net.ddns.mindustry.database.schema.tables.pojos.Permission
 
 class LookupBans(handler: CommandHandler) : PrivilegedClientCommand(handler) {
@@ -13,8 +16,9 @@ class LookupBans(handler: CommandHandler) : PrivilegedClientCommand(handler) {
         private const val PERMISSION_NAME = "ban"
 
         init {
-            description = "Looks up the active bans that a player has."
-            parameters = "<account-name>"
+            description = "Looks up the active bans a player has, by account name, or run with no arguments to " +
+                    "pick an online player from a menu."
+            parameters = "[account-name]"
 
             database!!.role().newPermission(PERMISSION_NAME)
             permission = database!!.role().findPermission(PERMISSION_NAME).get()
@@ -22,17 +26,21 @@ class LookupBans(handler: CommandHandler) : PrivilegedClientCommand(handler) {
     }
 
     override fun runner(arguments: Array<String>, player: Player) {
-        val account = hasPermission(permission, player) ?: return
-        val targetName = arguments[0]
+        hasPermission(permission, player) ?: return
 
-        val target = database!!.account().find(targetName)
-
-        if (target.isEmpty) {
-            player.sendMessage("[scarlet]Couldn't find that player!")
+        if (arguments.isEmpty()) {
+            PlayerSelect.open(player, title = "[gold]Look up bans", message = "Select a player.") { account ->
+                showBans(account, player)
+            }
             return
         }
 
-        val bans = database!!.punishment().activeBans(target.get())
+        val target = resolveTargetAccount(arguments[0], player) ?: return
+        showBans(target, player)
+    }
+
+    private fun showBans(target: Account, player: Player) {
+        val bans = database!!.punishment().activeBans(target)
 
         if (bans.size == 0) {
             player.sendMessage("That player has no active bans.")

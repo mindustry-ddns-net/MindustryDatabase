@@ -1,25 +1,20 @@
 package net.ddns.mindustry.database.plugin.commands.client.privileged.ui
 
 import arc.util.Log
-import mindustry.gen.Groups
 import mindustry.gen.Player
-import mindustry.net.Administration
 import net.ddns.mindustry.database.client.PunishmentQueries.Issuer
 import net.ddns.mindustry.database.plugin.Main.Companion.database
 import net.ddns.mindustry.database.plugin.commands.client.BaseClientCommand.Companion.playerHasPermission
-import net.ddns.mindustry.database.plugin.commands.client.playerToDisplayName
-import net.ddns.mindustry.database.plugin.configs.PluginConfigs
+import net.ddns.mindustry.database.plugin.currentServer
 import net.ddns.mindustry.database.schema.tables.pojos.Account
 import java.time.Duration
 
-class PunishmentBuilder(val menuId: Int, val author: Player) {
+class PunishmentBuilder(val author: Player) {
     var punishmentType: String? = null // although this isn't optimal, the likelihood of a player sending an invalid
                                         // option is unlikely.
     var target: Account? = null
     var reason: String? = null
     var duration: Duration? = null
-
-    val players: Map<Player, String> = mapPlayerNames()
 
     fun permissionCheck(name: String): Account? {
         val permission = database!!.role().findPermission(name)
@@ -31,20 +26,8 @@ class PunishmentBuilder(val menuId: Int, val author: Player) {
         return issuer
     }
 
-    private fun mapPlayerNames(): MutableMap<Player, String> {
-        val names = mutableMapOf<Player, String>()
-
-        Groups.player.forEach { player ->
-            if (!player.plainName().isEmpty()) {
-                names[player] = player.coloredName()
-            }
-        }
-
-        return names
-    }
-
     fun execute() {
-        val server = database!!.server().find(PluginConfigs.configServerIP.string(), Administration.Config.port.num())
+        val server = currentServer()
 
         if (listOf(target, reason, punishmentType).contains(null)) {
             author.sendMessage("[scarlet]How did you mess up this badly? Just talk to Lett at this point.")
@@ -60,11 +43,11 @@ class PunishmentBuilder(val menuId: Int, val author: Player) {
         when (punishmentType) {
             "warn" -> {
                 val issuer = permissionCheck("warn")
-                database!!.punishment().warn(target, Issuer.Player(issuer), reason, server.get())
+                database!!.punishment().warn(target, Issuer.Player(issuer), reason, server)
             }
             "kick" -> {
                 val issuer = permissionCheck("kick")
-                database!!.punishment().kick(target, Issuer.Player(issuer), reason, server.get())
+                database!!.punishment().kick(target, Issuer.Player(issuer), reason, server)
             }
             "ban" -> {
                 if (duration == null) {
@@ -74,7 +57,7 @@ class PunishmentBuilder(val menuId: Int, val author: Player) {
                 }
 
                 val issuer = permissionCheck("ban")
-                database!!.punishment().ban(target, Issuer.Player(issuer), reason, server.get(), duration)
+                database!!.punishment().ban(target, Issuer.Player(issuer), reason, server, duration)
             }
         }
     }

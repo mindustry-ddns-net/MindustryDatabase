@@ -2,10 +2,8 @@ package net.ddns.mindustry.database.plugin.commands.client.privileged
 
 import arc.util.CommandHandler
 import mindustry.gen.Player
-import mindustry.net.Administration
-import net.ddns.mindustry.database.client.PunishmentQueries.Issuer
 import net.ddns.mindustry.database.plugin.Main.Companion.database
-import net.ddns.mindustry.database.plugin.configs.PluginConfigs
+import net.ddns.mindustry.database.plugin.currentServer
 import net.ddns.mindustry.database.schema.tables.pojos.Permission
 
 class Warn(handler: CommandHandler) : PrivilegedClientCommand(handler) {
@@ -14,8 +12,8 @@ class Warn(handler: CommandHandler) : PrivilegedClientCommand(handler) {
         private const val PERMISSION_NAME = "warn"
 
         init {
-            description = "Warns a player."
-            parameters = "<account-name> <reason...>"
+            description = "Warns a player by account name, or run with no arguments to pick an online player from a menu."
+            parameters = "[account-name] [reason...]"
 
             database!!.role().newPermission(PERMISSION_NAME)
             permission = database!!.role().findPermission(PERMISSION_NAME).get()
@@ -23,21 +21,10 @@ class Warn(handler: CommandHandler) : PrivilegedClientCommand(handler) {
     }
 
     override fun runner(arguments: Array<String>, player: Player) {
-        val issuerAccount = hasPermission(permission, player) ?: return
-        val issuer = Issuer.Player(issuerAccount)
+        val (issuer, target) = preparePunishment(arguments, player, permission, PERMISSION_NAME, 2,
+            "[scarlet]Usage: /warn <account-name> <reason...>  (or /warn with no arguments to pick from a menu)") ?: return
 
-        val targetName = arguments[0]
-        val reason = arguments[1]
-
-        val target = database!!.account().find(targetName)
-        val server = database!!.server().find(PluginConfigs.configServerIP.string(), Administration.Config.port.num())
-
-        if (target.isEmpty) {
-            player.sendMessage("[scarlet]Couldn't find that player!")
-            return
-        }
-
-        database!!.punishment().warn(target.get(), issuer, reason, server.get())
-        player.sendMessage("$targetName was warned.")
+        database!!.punishment().warn(target, issuer, arguments[1], currentServer())
+        player.sendMessage("${target.username} was warned.")
     }
 }

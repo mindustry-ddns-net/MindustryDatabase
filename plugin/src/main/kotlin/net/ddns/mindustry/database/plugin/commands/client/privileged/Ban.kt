@@ -2,10 +2,8 @@ package net.ddns.mindustry.database.plugin.commands.client.privileged
 
 import arc.util.CommandHandler
 import mindustry.gen.Player
-import mindustry.net.Administration
-import net.ddns.mindustry.database.client.PunishmentQueries.Issuer
 import net.ddns.mindustry.database.plugin.Main.Companion.database
-import net.ddns.mindustry.database.plugin.configs.PluginConfigs
+import net.ddns.mindustry.database.plugin.currentServer
 import net.ddns.mindustry.database.schema.tables.pojos.Permission
 import kotlin.time.Duration
 import kotlin.time.toJavaDuration
@@ -15,8 +13,8 @@ class Ban(handler: CommandHandler) : PrivilegedClientCommand(handler) {
         val banPermission: Permission
 
         init {
-            description = "Bans an account via its username. Display names and usernames are separate."
-            parameters = "<account-name> <duration> <reason...>"
+            description = "Bans a player by account name, or run with no arguments to pick an online player from a menu."
+            parameters = "[account-name] [duration] [reason...]"
 
             database!!.role().newPermission("ban")
             banPermission = database!!.role().findPermission("ban").get()
@@ -24,23 +22,11 @@ class Ban(handler: CommandHandler) : PrivilegedClientCommand(handler) {
     }
 
     override fun runner(arguments: Array<String>, player: Player) {
-        val issuerAccount = hasPermission(banPermission, player) ?: return
-        val issuer = Issuer.Player(issuerAccount)
+        val (issuer, target) = preparePunishment(arguments, player, banPermission, "ban", 3,
+            "[scarlet]Usage: /ban <account-name> <duration> <reason...>  (or /ban with no arguments to pick from a menu)") ?: return
 
-        val targetName = arguments[0]
-        val durationString = arguments[1]
-        val reason = arguments[2]
-
-        val target = database!!.account().find(targetName)
-        val duration = Duration.parse(durationString)
-        val server = database!!.server().find(PluginConfigs.configServerIP.string(), Administration.Config.port.num())
-
-        if (target.isEmpty) {
-            player.sendMessage("[scarlet]Couldn't find that player!")
-            return
-        }
-
-        database!!.punishment().ban(target.get(), issuer, reason, server.get(), duration.toJavaDuration())
-        player.sendMessage("$targetName was banned.")
+        val duration = Duration.parse(arguments[1]).toJavaDuration()
+        database!!.punishment().ban(target, issuer, arguments[2], currentServer(), duration)
+        player.sendMessage("${target.username} was banned.")
     }
 }

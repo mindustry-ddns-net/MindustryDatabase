@@ -5,15 +5,18 @@ import arc.util.Log
 import mindustry.Vars
 import mindustry.gen.Groups
 import mindustry.gen.Player
+import mindustry.net.Administration
 import net.ddns.mindustry.database.client.Database
 import net.ddns.mindustry.database.client.SecurityConfig
 import net.ddns.mindustry.database.plugin.Main.Companion.database
 import net.ddns.mindustry.database.plugin.commands.BaseCommand
 import net.ddns.mindustry.database.plugin.configs.PluginConfigs.Configs.configAccountLimit
+import net.ddns.mindustry.database.plugin.configs.PluginConfigs.Configs.configServerIP
 import net.ddns.mindustry.database.plugin.configs.ReloadableConfig.Configs.reloadConfigs
 import net.ddns.mindustry.database.plugin.configs.toml.databaseInfo
 import net.ddns.mindustry.database.schema.tables.pojos.Account
 import net.ddns.mindustry.database.schema.tables.pojos.Ban
+import net.ddns.mindustry.database.schema.tables.pojos.Server
 import java.security.NoSuchAlgorithmException
 import java.time.format.DateTimeFormatter
 import kotlin.reflect.KClass
@@ -81,6 +84,10 @@ fun registerCommands(commandList: List<KClass<out BaseCommand>>, handler: Comman
         command.primaryConstructor!!.call(handler)
     }
 }
+
+/** The server this plugin instance is registered as, resolved from the configured IP and port. */
+fun currentServer(): Server =
+    database!!.server().find(configServerIP.string(), Administration.Config.port.num()).get()
 
 fun findOnlinePlayer(username: String): Player? {
     val result = Groups.player.find {player -> comparePlayer(username, player)}
