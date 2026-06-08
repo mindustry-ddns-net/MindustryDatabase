@@ -14,12 +14,17 @@ import net.ddns.mindustry.segment.ui.menu.BaseMenu
  */
 object PlayerSelect {
 
-    fun open(
+    /**
+     * Opens a menu to a player showing a list of the currently online players for that server.
+     * @param filter Filters the options based on the username of the players.
+     * @param onPick A callback that expects a `Player` object as a parameter.
+     */
+    fun get( // due to some odd behavior with Kotlin, I can't overload the `open(...)` method..
         staff: Player,
         title: String = "[gold]Select a player",
         message: String = "Choose a player.",
         filter: (Player) -> Boolean = { it.plainName().isNotEmpty() },
-        onPick: (Account) -> Unit,
+        onPick: (Player) -> Unit
     ) {
         val targets = buildList { Groups.player.forEach { if (filter(it)) add(it) } }
         if (targets.isEmpty()) {
@@ -28,19 +33,36 @@ object PlayerSelect {
         }
 
         val options = targets.map { arrayOf(it.coloredName()) }.toTypedArray()
-
         val menu = menuHandler.addMenu(title, message, options, callback@ { _: Player, child: Child ->
             if (child !is BaseMenu) return@callback
             val picked = targets.getOrNull(child.option) ?: return@callback
 
-            val account = database!!.account().find(picked.ip(), picked.uuid())
-            if (account.isEmpty) {
-                staff.sendMessage("[scarlet]${picked.plainName()} isn't logged in, so they have no account.")
-                return@callback
-            }
-            onPick(account.get())
+            onPick(picked)
         }, false)
 
         menu.show(staff.con())
+    }
+
+    /**
+     * Opens a menu to a player showing a list of the currently online players for that server.
+     * @param filter Filters the options based on the username of the players.
+     * @param onPick A callback that expects an `Account` object as a parameter.
+     */
+    fun open(
+        staff: Player,
+        title: String = "[gold]Select a player",
+        message: String = "Choose a player.",
+        filter: (Player) -> Boolean = { it.plainName().isNotEmpty() },
+        onPick: (Account) -> Unit,
+    ) {
+        get(staff, title, message, filter) { chosenPlayer ->
+            val account = database!!.account().find(chosenPlayer.ip(), chosenPlayer.uuid())
+            if (account.isEmpty) {
+                staff.sendMessage("[scarlet]${chosenPlayer.plainName()} isn't logged in, so they have no account.")
+                return@get
+            }
+
+            onPick(account.get())
+        }
     }
 }
