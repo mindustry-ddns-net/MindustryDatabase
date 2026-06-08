@@ -8,12 +8,15 @@ import mindustry.Vars.netServer
 import mindustry.content.Blocks
 import mindustry.ctype.UnlockableContent
 import mindustry.gen.Building
+import mindustry.gen.Player
 import mindustry.net.Administration
 import mindustry.net.Administration.ActionType
 import mindustry.world.Block
 import mindustry.world.blocks.ConstructBlock
 import net.ddns.mindustry.database.plugin.Main.Companion.database
 import net.ddns.mindustry.database.plugin.configs.PluginConfigs.Configs.configTileHistoryLimit
+
+val pausedPlayers = mutableSetOf<Player>()
 
 private val recordedActions = setOf(
     ActionType.placeBlock,
@@ -40,6 +43,7 @@ fun loadActionFilters() {
     TileHistoryStore.capacity = configTileHistoryLimit.num()
     netServer.admins.actionFilters.add(Administration.ActionFilter(::noBanned))
     netServer.admins.actionFilters.add(Administration.ActionFilter(::recordTileHistory))
+    netServer.admins.actionFilters.add(Administration.ActionFilter { action -> return@ActionFilter action.player !in pausedPlayers })
 }
 
 // literally 1984...

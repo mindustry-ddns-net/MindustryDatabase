@@ -212,4 +212,7 @@ private fun playerLeave(event: PlayerLeave) {
     val server = database!!.server().find(configServerIP.string(), port)
     database!!.serverAccount().leavesServer(account.get(), server.get())
     PlayerName.forget(event.player)
+    pausedPlayers.remove(event.player)    // if a player is banned for an hour while paused, then they could
+                                                    // potentially still be paused upon returning after that ban. This
+                                                    // would prevent such a scenario.
 }
